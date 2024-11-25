@@ -17,5 +17,9 @@ export default {
     },
     getProductById(productId) {
         return apiClient.get(`/product/${productId}`);
-    }
+    },
+    updateOrderStatus(orderId, status) {
+        // PUT-aanroep om de status van een order bij te werken
+        return apiClient.put(`/order/${orderId}/status`, { status });
+    },
 };
