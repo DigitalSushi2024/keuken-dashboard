@@ -1,43 +1,40 @@
 <template>
-  <div class="container">
-    <div v-for="order in orders" :key="order.orderId">
-      <!-- OrderItem stuurt een event bij voltooien -->
-      <OrderItem
-          :order="order"
-          @order-completed="markOrderAsCompleted"
-      />
+  <div class="order-list">
+    <div v-for="order in orders" :key="order.orderId" class="order-item">
+      <h2>Order #{{ order.orderId }}</h2>
+      <ul>
+        <li v-for="item in order.orderItems" :key="item.productId">
+          {{ item.quantity }} x {{ item.productName }}
+        </li>
+      </ul>
     </div>
   </div>
 </template>
 
 <script>
-import OrderItem from './OrderItem.vue';
-import apiService from '../services/apiServices.js'; // Zorg dat je apiServices correct importeert
-
 export default {
+  name: 'OrderList',
   props: {
     orders: {
       type: Array,
       required: true,
     },
   },
-  components: {
-    OrderItem,
-  },
-  methods: {
-    async markOrderAsCompleted(orderId) {
-      try {
-        // Roep de API aan om de status van de order te wijzigen
-        await apiService.updateOrderStatus(orderId, 'completed');
-
-        // Update de UI door de voltooide order te verwijderen
-        this.orders = this.orders.filter((order) => order.orderId !== orderId);
-
-        console.log(`Order #${orderId} marked as completed.`);
-      } catch (error) {
-        console.error('Error updating order status:', error);
-      }
-    },
-  },
 };
 </script>
+
+<style scoped>
+.order-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.order-item {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 5px;
+  width: 200px;
+}
+</style>

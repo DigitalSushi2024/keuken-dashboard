@@ -1,39 +1,24 @@
 <template>
-  <div :class="['order-item', { completed: isCompleted }]">
-    <div>
-      <h3>Order #{{ order.orderId }}</h3>
-      <span
-          class="order-status"
-          :class="order.status === 'pending' ? 'order-status-pending' : 'order-status-done'"
-      >
-        {{ order.status }}
-      </span>
-    </div>
+  <div class="order-item">
+    <h2>Order #{{ order.orderId }}</h2>
     <ul>
-      <li
-          v-for="item in order.orderItems"
-          :key="item.productId"
-          @click="toggleItemCompletion(item)"
-          :style="{ backgroundColor: item.completed ? '#e8f5e9' : '' }"
-      >
-        <label>
-          <input
-              type="checkbox"
-              v-model="item.completed"
-              @change="checkOrderCompletion"
-          />
+      <li v-for="item in order.orderItems" :key="item.productId">
+        <input
+            type="checkbox"
+            v-model="item.completed"
+            @change="checkOrderCompletion"
+        />
+        <span :class="{ completed: item.completed }">
           {{ item.quantity }} x {{ item.productName }}
-        </label>
-        <p v-if="item.productDescription">{{ item.productDescription }}</p>
+        </span>
       </li>
     </ul>
-    <!-- Knop om de order naar "completed" te sturen -->
     <button
-        v-if="isCompleted"
-        @click="markOrderAsCompleted"
+        v-if="isOrderCompleted"
+        @click="markAsCompleted"
         class="complete-button"
     >
-      Mark Order as Completed
+      Complete Order
     </button>
   </div>
 </template>
@@ -48,17 +33,14 @@ export default {
   },
   data() {
     return {
-      isCompleted: false,
+      isOrderCompleted: false,
     };
   },
   methods: {
-    toggleItemCompletion(item) {
-      item.completed = !item.completed;
-    },
     checkOrderCompletion() {
-      this.isCompleted = this.order.orderItems.every((item) => item.completed);
+      this.isOrderCompleted = this.order.orderItems.every((item) => item.completed);
     },
-    markOrderAsCompleted() {
+    markAsCompleted() {
       this.$emit('order-completed', this.order.orderId);
     },
   },
@@ -66,22 +48,44 @@ export default {
 </script>
 
 <style scoped>
-.order-status-pending {
-  color: orange;
+.order-item {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  width: 250px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-.order-status-done {
-  color: green;
+h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: #333;
+}
+ul {
+  list-style: none;
+  padding: 0;
+}
+li {
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+}
+li .completed {
+  text-decoration: line-through;
+  color: #999;
 }
 .complete-button {
-  margin-top: 16px;
-  background-color: green;
-  color: white;
-  padding: 8px 12px;
+  background-color: #28a745;
+  color: #fff;
+  padding: 8px 16px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  margin-top: 8px;
+  width: 100%;
+  text-align: center;
 }
 .complete-button:hover {
-  background-color: darkgreen;
+  background-color: #218838;
 }
 </style>

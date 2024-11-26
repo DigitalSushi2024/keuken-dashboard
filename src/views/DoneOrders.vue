@@ -19,7 +19,7 @@ export default {
   },
   async created() {
     try {
-      // Haal completed orders op
+      // Haal de lijst van completed orders op
       const completedResponse = await apiService.getCompletedOrders();
       const orders = normalizeData(completedResponse.data);
 
@@ -32,13 +32,17 @@ export default {
             item.productName = product.productName || 'Unknown Product';
             item.productDescription = product.description || '';
           } catch (error) {
-            console.error(`Fout bij het ophalen van product ${item.productId}:`, error);
+            console.error(
+                `Fout bij het ophalen van productinformatie voor product met id ${item.productId}:`,
+                error
+            );
             item.productName = 'Unknown Product';
             item.productDescription = '';
           }
         }
       }
 
+      // Stel de opgehaalde orders in de lijst in
       this.doneOrders = orders;
     } catch (error) {
       console.error('Fout bij het ophalen van completed orders:', error);

@@ -10,8 +10,9 @@ const apiClient = axios.create({
 
 export default {
     getPendingOrders() {
-        return apiClient.get('/order/pending'); // Endpoint voor pending orders
+        return apiClient.get(`/order/pending`); // Gebruik standaardwaarde 1 voor keuken
     },
+
     getCompletedOrders() {
         return apiClient.get('/order/completed'); // Endpoint voor completed orders
     },
