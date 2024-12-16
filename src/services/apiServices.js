@@ -8,11 +8,18 @@ const apiClient = axios.create({
 });
 
 export default {
-    getPendingOrdersWithLocation(locationId) {
-        return apiClient.get(`/pending/${locationId}`);
+    getPendingOrdersWithLocation() {
+        return apiClient.get(`/kitchen/pending`);
+    },
+    getCompletedKitchenOrders() {
+        return apiClient.get(`/kitchen/completed`);
     },
     updateOrderStatus(orderId, locationId) {
         return apiClient.put(`/order/${orderId}/location/${locationId}/update-status`);
+    },
+    setKitchenOrderToPending(orderId) {
+        // API-aanroep om keukenorder terug te zetten naar pending
+        return apiClient.put(`/order/${orderId}/location/1/set-pending`);
     },
 
 };
