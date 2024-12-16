@@ -1,26 +1,18 @@
-import axios from 'axios';
+import axios from "axios";
 
 const apiClient = axios.create({
-    baseURL: 'https://localhost:7110/api', // Base URL van de backend
+    baseURL: "https://localhost:7110/api/Order",
     headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+        "Content-Type": "application/json",
     },
 });
 
 export default {
-    getPendingOrders() {
-        return apiClient.get(`/order/pending`); // Gebruik standaardwaarde 1 voor keuken
+    getPendingOrdersWithLocation(locationId) {
+        return apiClient.get(`/pending/${locationId}`);
+    },
+    updateOrderStatus(orderId, locationId) {
+        return apiClient.put(`/order/${orderId}/location/${locationId}/update-status`);
     },
 
-    getCompletedOrders() {
-        return apiClient.get('/order/completed'); // Endpoint voor completed orders
-    },
-    getProductById(productId) {
-        return apiClient.get(`/product/${productId}`);
-    },
-    updateOrderStatus(orderId, status) {
-        // PUT-aanroep om de status van een order bij te werken
-        return apiClient.put(`/order/${orderId}/status`, { status });
-    },
 };

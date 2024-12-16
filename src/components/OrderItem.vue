@@ -2,13 +2,13 @@
   <div class="order-item">
     <h2>Order #{{ order.orderId }}</h2>
     <ul>
-      <li v-for="item in order.orderItems" :key="item.productId">
-        <input
-            type="checkbox"
-            v-model="item.completed"
-            @change="checkOrderCompletion"
-        />
-        <span :class="{ completed: item.completed }">
+      <li
+          v-for="item in order.orderItems"
+          :key="item.productId"
+          @click="toggleItemStatus(item)"
+          :class="{ completed: item.status === 'Complete' }"
+      >
+        <span>
           {{ item.quantity }} x {{ item.productName }}
         </span>
       </li>
@@ -18,12 +18,14 @@
         @click="markAsCompleted"
         class="complete-button"
     >
-      Complete Order
+      Mark Order as Done
     </button>
   </div>
 </template>
 
 <script>
+import apiService from "../services/apiServices";
+
 export default {
   props: {
     order: {
@@ -37,12 +39,34 @@ export default {
     };
   },
   methods: {
+    async toggleItemStatus(item) {
+      console.log("Clicked item:", item); // Controleer of productId bestaat
+      try {
+        const newStatus = item.status === "Complete" ? "Pending" : "Complete";
+        if (!item.productId) {
+          console.error("productId is undefined! Check backend response.");
+          return;
+        }
+        await apiService.updateOrderItemStatus(item.productId, newStatus);
+        item.status = newStatus;
+        this.checkOrderCompletion();
+      } catch (error) {
+        console.error("Error updating item status:", error);
+      }
+    },
     checkOrderCompletion() {
-      this.isOrderCompleted = this.order.orderItems.every((item) => item.completed);
+      // Controleer of alle items 'Complete' zijn
+      this.isOrderCompleted = this.order.orderItems.every(
+          (item) => item.status === "Complete"
+      );
     },
     markAsCompleted() {
-      this.$emit('order-completed', this.order.orderId);
+      // Emit event naar parent component om de order-status op 'done' te zetten
+      this.$emit("order-completed", this.order.orderId);
     },
+  },
+  mounted() {
+    this.checkOrderCompletion(); // Check bij het laden van de component
   },
 };
 </script>
@@ -67,12 +91,12 @@ ul {
 }
 li {
   margin: 8px 0;
-  display: flex;
-  align-items: center;
+  cursor: pointer;
+  transition: color 0.2s, text-decoration 0.2s;
 }
-li .completed {
+li.completed {
   text-decoration: line-through;
-  color: #999;
+  color: #28a745;
 }
 .complete-button {
   background-color: #28a745;

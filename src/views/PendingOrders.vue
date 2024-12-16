@@ -1,115 +1,122 @@
 <template>
   <div class="pending-orders">
-    <h1>Pending Orders</h1>
+    <h1>Pending Kitchen Orders</h1>
     <div v-if="pendingOrders.length === 0" class="no-orders">
       <p>No pending orders.</p>
     </div>
     <div class="order-list">
-      <OrderItem
+      <div
           v-for="order in pendingOrders"
           :key="order.orderId"
-          :order="order"
-          @order-completed="handleOrderCompleted"
-      />
+          class="order-item"
+      >
+        <h2>Order #{{ order.orderId }}</h2>
+        <ul>
+          <li
+              v-for="item in order.orderItems"
+              :key="item.itemId"
+              :class="{ completed: item.completed }"
+              @click="toggleItemCompletion(item)"
+          >
+            {{ item.productName }}
+          </li>
+        </ul>
+        <button
+            v-if="isOrderReady(order)"
+            @click="markOrderComplete(order.orderId)"
+            class="complete-button"
+        >
+          Mark as Complete
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import OrderItem from '../components/OrderItem.vue';
-import apiService from '../services/apiServices.js';
-import { normalizeData } from '../utils/normalizeData.js';
-import { startSignalRConnection, onOrderCompleted, onNewOrder } from '../Websockets/signalRService.js';
+import apiService from "../services/apiServices";
 
 export default {
-  components: { OrderItem },
   data() {
     return {
       pendingOrders: [],
+      locationId: 1, // Keuken
     };
   },
   methods: {
     async loadPendingOrders() {
       try {
-        const response = await apiService.getPendingOrders();
-        const orders = normalizeData(response.data);
+        const response = await apiService.getPendingOrdersWithLocation(this.locationId);
+        console.log("API Response:", response.data);
 
-        for (const order of orders) {
-          for (const item of order.orderItems) {
-            await this.enrichOrderItem(item);
+        // Controleer en map de API response correct
+        const orders = Array.isArray(response.data.$values) ? response.data.$values : response.data;
+
+        this.pendingOrders = orders.reduce((acc, curr) => {
+          let order = acc.find(o => o.orderId === curr.orderId);
+          if (!order) {
+            order = {
+              orderId: curr.orderId,
+              orderTime: curr.orderTime,
+              orderItems: [],
+            };
+            acc.push(order);
           }
-        }
-
-        this.pendingOrders = orders;
+          order.orderItems.push({
+            itemId: curr.$id || curr.itemId || `${curr.orderId}-${curr.productName}`, // Unieke key
+            productName: curr.productName,
+            completed: false, // Default false
+          });
+          return acc;
+        }, []);
       } catch (error) {
-        console.error('Error loading pending orders:', error);
+        console.error("Error loading pending orders:", error);
       }
     },
-    async enrichOrderItem(item) {
+    toggleItemCompletion(item) {
+      item.completed = !item.completed;
+    },
+    isOrderReady(order) {
+      return order.orderItems.every((item) => item.completed);
+    },
+    async markOrderComplete(orderId) {
       try {
-        const productResponse = await apiService.getProductById(item.productId);
-        const product = productResponse.data;
-        item.productName = product.productName || 'Unknown Product';
-        item.productDescription = product.description || '';
-        item.completed = false;
+        await apiService.updateOrderStatus(orderId, this.locationId);
+        this.pendingOrders = this.pendingOrders.filter(order => order.orderId !== orderId);
+        alert(`Order ${orderId} marked as complete!`);
       } catch (error) {
-        console.error(`Error fetching product ${item.productId}:`, error);
-        item.productName = 'Unknown Product';
-        item.productDescription = '';
+        console.error("Error updating order status:", error);
       }
-    },
-    handleOrderCompleted(orderId) {
-      this.pendingOrders = this.pendingOrders.filter(
-          (order) => order.orderId !== orderId
-      );
-      apiService.updateOrderStatus(orderId, 'completed');
-    },
-    setupSignalR() {
-      startSignalRConnection();
-
-      onOrderCompleted((orderId) => {
-        this.pendingOrders = this.pendingOrders.filter(
-            (order) => order.orderId !== orderId
-        );
-      });
-
-      onNewOrder((newOrder) => {
-        this.pendingOrders.push(newOrder);
-      });
     },
   },
-  async created() {
-    await this.loadPendingOrders();
-    this.setupSignalR();
+  created() {
+    this.loadPendingOrders();
   },
 };
 </script>
 
 <style scoped>
 .pending-orders {
-  background-color: #f4f4f9;
-  color: #333;
   padding: 16px;
+}
+.order-item {
+  border: 1px solid #ddd;
+  margin: 8px;
+  padding: 12px;
   border-radius: 8px;
-  max-width: 800px;
-  margin: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: #f9f9f9;
 }
-h1 {
-  font-size: 28px;
-  color: #ff6f00;
-  text-align: center;
-  margin-bottom: 16px;
+.completed {
+  color: green;
+  text-decoration: line-through;
+  cursor: pointer;
 }
-.no-orders p {
-  color: #888;
-  font-size: 18px;
-  text-align: center;
-}
-.order-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  justify-content: center;
+.complete-button {
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
 }
 </style>
