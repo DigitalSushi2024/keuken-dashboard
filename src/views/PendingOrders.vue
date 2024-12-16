@@ -1,9 +1,12 @@
 <template>
   <div class="pending-orders">
     <h1>Pending Kitchen Orders</h1>
+    <!-- Toon bericht als er geen pending orders zijn -->
     <div v-if="pendingOrders.length === 0" class="no-orders">
       <p>No pending orders.</p>
     </div>
+
+    <!-- Lijst met orders -->
     <div class="order-list">
       <div
           v-for="order in pendingOrders"
@@ -16,18 +19,12 @@
               v-for="item in order.orderItems"
               :key="item.itemId"
               :class="{ completed: item.completed }"
-              @click="toggleItemCompletion(item)"
+              @click="toggleItemStatus(order, item)"
           >
             {{ item.productName }}
+            <span v-if="item.completed">(Complete)</span>
           </li>
         </ul>
-        <button
-            v-if="isOrderReady(order)"
-            @click="markOrderComplete(order.orderId)"
-            class="complete-button"
-        >
-          Mark as Complete
-        </button>
       </div>
     </div>
   </div>
@@ -39,58 +36,79 @@ import apiService from "../services/apiServices";
 export default {
   data() {
     return {
-      pendingOrders: [],
-      locationId: 1, // Keuken
+      pendingOrders: [], // Opslag voor pending orders
+      locationId: 1, // Location ID voor keuken
     };
   },
   methods: {
+    // Haal pending orders op bij component-lading
     async loadPendingOrders() {
       try {
-        const response = await apiService.getPendingOrdersWithLocation(this.locationId);
-        console.log("API Response:", response.data);
+        const response = await apiService.getPendingOrdersWithLocation();
+        const orders = response.data?.$values || [];
 
-        // Controleer en map de API response correct
-        const orders = Array.isArray(response.data.$values) ? response.data.$values : response.data;
-
-        this.pendingOrders = orders.reduce((acc, curr) => {
-          let order = acc.find(o => o.orderId === curr.orderId);
-          if (!order) {
-            order = {
-              orderId: curr.orderId,
-              orderTime: curr.orderTime,
-              orderItems: [],
-            };
-            acc.push(order);
-          }
-          order.orderItems.push({
-            itemId: curr.$id || curr.itemId || `${curr.orderId}-${curr.productName}`, // Unieke key
-            productName: curr.productName,
-            completed: false, // Default false
-          });
-          return acc;
-        }, []);
+        // Groepeer de orders op basis van orderId
+        this.pendingOrders = this.groupOrdersByOrderId(orders);
       } catch (error) {
         console.error("Error loading pending orders:", error);
       }
     },
-    toggleItemCompletion(item) {
+
+    // Groepeer orders op orderId
+    groupOrdersByOrderId(orders) {
+      const grouped = [];
+      orders.forEach((order) => {
+        let existingOrder = grouped.find((o) => o.orderId === order.orderId);
+        if (!existingOrder) {
+          existingOrder = {
+            orderId: order.orderId,
+            locationId: order.locationId,
+            orderItems: [],
+          };
+          grouped.push(existingOrder);
+        }
+        existingOrder.orderItems.push({
+          itemId: order.itemId,
+          productName: order.productName,
+          completed: false, // Startstatus
+        });
+      });
+      return grouped;
+    },
+
+    // Wissel de status van een individueel item
+    toggleItemStatus(order, item) {
       item.completed = !item.completed;
+
+      // Controleer of alle items in deze order zijn voltooid
+      if (this.areAllItemsComplete(order.orderItems)) {
+        this.updateOrderStatus(order.orderId, order.locationId);
+      }
     },
-    isOrderReady(order) {
-      return order.orderItems.every((item) => item.completed);
+
+    // Controleer of alle items in een order zijn voltooid
+    areAllItemsComplete(items) {
+      return items.every((item) => item.completed);
     },
-    async markOrderComplete(orderId) {
+
+    // Roep de API aan om de orderstatus te updaten
+    async updateOrderStatus(orderId, locationId) {
       try {
-        await apiService.updateOrderStatus(orderId, this.locationId);
-        this.pendingOrders = this.pendingOrders.filter(order => order.orderId !== orderId);
-        alert(`Order ${orderId} marked as complete!`);
+        await apiService.updateOrderStatus(orderId, locationId);
+        alert(`Order #${orderId} has been marked as complete!`);
+
+        // Verwijder de order uit de lijst
+        this.pendingOrders = this.pendingOrders.filter(
+            (order) => order.orderId !== orderId
+        );
       } catch (error) {
         console.error("Error updating order status:", error);
+        alert("Failed to update order status. Please try again.");
       }
     },
   },
   created() {
-    this.loadPendingOrders();
+    this.loadPendingOrders(); // Laad de orders bij het laden van de component
   },
 };
 </script>
@@ -99,24 +117,44 @@ export default {
 .pending-orders {
   padding: 16px;
 }
+
+.no-orders {
+  text-align: center;
+  font-size: 1.2em;
+  color: #888;
+}
+
 .order-item {
   border: 1px solid #ddd;
   margin: 8px;
   padding: 12px;
   border-radius: 8px;
-  background: #f9f9f9;
+  background: #f1f1f1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-.completed {
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 1.4em;
+  color: #333;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  padding: 4px 0;
+  font-size: 1.1em;
+  color: #555;
+  cursor: pointer;
+}
+
+li.completed {
   color: green;
   text-decoration: line-through;
-  cursor: pointer;
-}
-.complete-button {
-  background-color: #28a745;
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
+  cursor: default;
 }
 </style>
