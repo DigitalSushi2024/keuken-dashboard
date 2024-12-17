@@ -12,8 +12,7 @@
       <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/vue-router.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/vue-router.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/vue-router.js.map" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/vue-router.js.map" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node_modules/.vite/deps/vue.js" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.vite/deps/vue.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Websockets/signalRService.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/Websockets/signalRService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/services/apiServices.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/services/apiServices.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views/DoneOrders.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/DoneOrders.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/views/PendingOrders.vue" beforeDir="false" afterPath="$PROJECT_DIR$/src/views/PendingOrders.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -65,7 +64,7 @@
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "design-kitchen",
     "kotlin-language-version-configured": "true",
     "list.type.of.created.stylesheet": "CSS",
     "node.js.detected.package.eslint": "true",

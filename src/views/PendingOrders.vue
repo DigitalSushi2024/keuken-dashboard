@@ -1,30 +1,53 @@
 <template>
   <div class="pending-orders">
-    <h1>Pending Kitchen Orders</h1>
-    <!-- Toon bericht als er geen pending orders zijn -->
-    <div v-if="pendingOrders.length === 0" class="no-orders">
-      <p>No pending orders.</p>
+    <h1>🍽️ Pending Kitchen Orders</h1>
+
+    <!-- Notificatiebalk -->
+    <div v-if="notification.message" class="notification" :class="notification.type">
+      {{ notification.message }}
     </div>
 
-    <!-- Lijst met orders -->
+    <!-- Instellingen -->
+    <div class="settings">
+      <button @click="toggleOrderDirection" class="btn primary">
+        Sorteer: {{ orderDirection === 'asc' ? 'Oplopend' : 'Aflopend' }}
+      </button>
+    </div>
+
+    <!-- Geen orders -->
+    <div v-if="pendingOrders.length === 0" class="no-orders">
+      <p>No pending orders. 🎉</p>
+    </div>
+
+    <!-- Grid met orders -->
     <div class="order-list">
       <div
-          v-for="order in pendingOrders"
+          v-for="order in displayedOrders"
           :key="order.orderId"
-          class="order-item"
+          class="order-card"
+          :class="{ expanded: expandedOrders.includes(order.orderId) }"
       >
         <h2>Order #{{ order.orderId }}</h2>
-        <ul>
-          <li
-              v-for="item in order.orderItems"
+        <div class="order-items">
+          <button
+              v-for="(item, index) in getVisibleItems(order)"
               :key="item.itemId"
+              class="btn item"
               :class="{ completed: item.completed }"
               @click="toggleItemStatus(order, item)"
           >
-            {{ item.productName }}
-            <span v-if="item.completed">(Complete)</span>
-          </li>
-        </ul>
+            {{ item.productName }} (x{{ item.quantity }})
+            <span v-if="item.completed" class="checkmark">✔</span>
+          </button>
+        </div>
+        <!-- Toon meer knop -->
+        <button
+            v-if="order.orderItems.length > 4"
+            class="btn toggle-btn"
+            @click="toggleExpandOrder(order.orderId)"
+        >
+          {{ expandedOrders.includes(order.orderId) ? 'Toon minder' : 'Toon meer' }}
+        </button>
       </div>
     </div>
   </div>
@@ -36,25 +59,30 @@ import apiService from "../services/apiServices";
 export default {
   data() {
     return {
-      pendingOrders: [], // Opslag voor pending orders
-      locationId: 1, // Location ID voor keuken
+      pendingOrders: [],
+      locationId: 1,
+      orderDirection: "asc",
+      notification: { message: "", type: "" },
+      expandedOrders: [], // Bijhouden welke orders zijn uitgebreid
     };
   },
+  computed: {
+    displayedOrders() {
+      return this.orderDirection === "asc"
+          ? [...this.pendingOrders]
+          : [...this.pendingOrders].reverse();
+    },
+  },
   methods: {
-    // Haal pending orders op bij component-lading
     async loadPendingOrders() {
       try {
         const response = await apiService.getPendingOrdersWithLocation();
         const orders = response.data?.$values || [];
-
-        // Groepeer de orders op basis van orderId
         this.pendingOrders = this.groupOrdersByOrderId(orders);
       } catch (error) {
-        console.error("Error loading pending orders:", error);
+        this.showNotification("Error loading orders.", "error");
       }
     },
-
-    // Groepeer orders op orderId
     groupOrdersByOrderId(orders) {
       const grouped = [];
       orders.forEach((order) => {
@@ -62,7 +90,7 @@ export default {
         if (!existingOrder) {
           existingOrder = {
             orderId: order.orderId,
-            locationId: order.locationId,
+            locationId: this.locationId,
             orderItems: [],
           };
           grouped.push(existingOrder);
@@ -70,91 +98,174 @@ export default {
         existingOrder.orderItems.push({
           itemId: order.itemId,
           productName: order.productName,
-          completed: false, // Startstatus
+          quantity: order.quantity,
+          completed: false,
         });
       });
       return grouped;
     },
-
-    // Wissel de status van een individueel item
+    toggleOrderDirection() {
+      this.orderDirection = this.orderDirection === "asc" ? "desc" : "asc";
+    },
     toggleItemStatus(order, item) {
       item.completed = !item.completed;
 
-      // Controleer of alle items in deze order zijn voltooid
       if (this.areAllItemsComplete(order.orderItems)) {
-        this.updateOrderStatus(order.orderId, order.locationId);
+        this.markOrderComplete(order);
       }
     },
-
-    // Controleer of alle items in een order zijn voltooid
     areAllItemsComplete(items) {
       return items.every((item) => item.completed);
     },
+    markOrderComplete(order) {
+      this.showNotification(`Order #${order.orderId} is afgerond!`, "success");
 
-    // Roep de API aan om de orderstatus te updaten
-    async updateOrderStatus(orderId, locationId) {
-      try {
-        await apiService.updateOrderStatus(orderId, locationId);
-        alert(`Order #${orderId} has been marked as complete!`);
-
-        // Verwijder de order uit de lijst
-        this.pendingOrders = this.pendingOrders.filter(
-            (order) => order.orderId !== orderId
-        );
-      } catch (error) {
-        console.error("Error updating order status:", error);
-        alert("Failed to update order status. Please try again.");
+      this.pendingOrders = this.pendingOrders.filter(
+          (o) => o.orderId !== order.orderId
+      );
+    },
+    getVisibleItems(order) {
+      return this.expandedOrders.includes(order.orderId)
+          ? order.orderItems
+          : order.orderItems.slice(0, 4); // Toon standaard de eerste 4 items
+    },
+    toggleExpandOrder(orderId) {
+      if (this.expandedOrders.includes(orderId)) {
+        this.expandedOrders = this.expandedOrders.filter((id) => id !== orderId);
+      } else {
+        this.expandedOrders.push(orderId);
       }
+    },
+    showNotification(message, type) {
+      this.notification.message = message;
+      this.notification.type = type;
+
+      setTimeout(() => {
+        this.notification.message = "";
+        this.notification.type = "";
+      }, 3000);
     },
   },
   created() {
-    this.loadPendingOrders(); // Laad de orders bij het laden van de component
+    this.loadPendingOrders();
   },
 };
 </script>
 
 <style scoped>
+/* Algemene stijl */
 .pending-orders {
-  padding: 16px;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #f7f8fa;
 }
 
-.no-orders {
+h1 {
   text-align: center;
-  font-size: 1.2em;
-  color: #888;
+  font-size: 2.5rem;
+  margin-bottom: 20px;
 }
 
-.order-item {
-  border: 1px solid #ddd;
-  margin: 8px;
-  padding: 12px;
+.settings {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+/* Notificatiestijl */
+.notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 15px 20px;
+  font-size: 1rem;
+  font-weight: bold;
   border-radius: 8px;
-  background: #f1f1f1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  color: white;
+  animation: fadeInOut 3s ease-in-out;
 }
 
-h2 {
-  margin: 0 0 8px;
-  font-size: 1.4em;
-  color: #333;
+.notification.success {
+  background-color: #28a745;
 }
 
-ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
+.notification.error {
+  background-color: #dc3545;
 }
 
-li {
-  padding: 4px 0;
-  font-size: 1.1em;
-  color: #555;
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  10%, 90% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+}
+
+/* Grid voor de orders */
+.order-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.order-card {
+  background-color: #fff;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  min-height: 200px;
+}
+
+.order-card.expanded {
+  min-height: 350px;
+}
+
+.order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.btn {
+  padding: 10px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
 }
 
-li.completed {
-  color: green;
-  text-decoration: line-through;
-  cursor: default;
+.btn.primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn.toggle-btn {
+  margin-top: 10px;
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn.item {
+  background-color: #f1f1f1;
+  color: #333;
+  text-align: center;
+}
+
+.btn.item.completed {
+  background-color: #28a745;
+  color: white;
 }
 </style>
